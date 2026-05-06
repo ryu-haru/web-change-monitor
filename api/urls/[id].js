@@ -8,7 +8,7 @@ async function getApiKey(req) {
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -24,6 +24,18 @@ module.exports = async (req, res) => {
 
   if (req.method === 'GET') {
     return res.json(record);
+  }
+
+  if (req.method === 'PATCH') {
+    const allowed = ['name', 'interval_minutes', 'selector', 'notify_slack', 'notify_email', 'is_active'];
+    const updates = {};
+    const body = req.body || {};
+    for (const key of allowed) {
+      if (key in body) updates[key] = body[key];
+    }
+    const updated = { ...record, ...updates };
+    await kv.set(`url:${id}`, updated);
+    return res.json(updated);
   }
 
   if (req.method === 'DELETE') {

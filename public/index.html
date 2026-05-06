@@ -622,6 +622,19 @@
     } catch { renderTable([]); }
   }
 
+  // ===== Pause/Resume URL =====
+  async function togglePause(id, currentlyActive) {
+    try {
+      await fetch(`${API_BASE}/api/urls/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify({ is_active: !currentlyActive }),
+      });
+      loadUrls();
+      showToast(currentlyActive ? '監視を停止しました' : '監視を再開しました');
+    } catch { showToast('更新に失敗しました'); }
+  }
+
   // ===== Delete URL =====
   async function removeUrl(id) {
     if (!confirm('この監視URLを削除しますか？')) return;
@@ -658,9 +671,11 @@
       return;
     }
     tbody.innerHTML = items.map(m => {
-      const statusBadge = m.last_hash
-        ? '<span class="status-badge status-ok"><span class="status-dot"></span>監視中</span>'
-        : '<span class="status-badge status-pending"><span class="status-dot"></span>初回待ち</span>';
+      const statusBadge = m.is_active === false
+        ? '<span class="status-badge status-pending"><span class="status-dot"></span>停止中</span>'
+        : m.last_hash
+          ? '<span class="status-badge status-ok"><span class="status-dot"></span>監視中</span>'
+          : '<span class="status-badge status-pending"><span class="status-dot"></span>初回待ち</span>';
       const lastCheck = m.last_checked_at
         ? new Date(m.last_checked_at * 1000).toLocaleString('ja-JP')
         : '未チェック';
@@ -674,6 +689,7 @@
           <td>${statusBadge}</td>
           <td style="white-space:nowrap;">
             <button class="dash-btn secondary" onclick="showHistory('${escapeHtml(m.id)}')" style="padding:4px 10px;font-size:12px;margin-right:4px;">履歴</button>
+            <button class="dash-btn secondary" onclick="togglePause('${escapeHtml(m.id)}', ${m.is_active !== false})" style="padding:4px 10px;font-size:12px;margin-right:4px;">${m.is_active === false ? '▶ 再開' : '⏸ 停止'}</button>
             <button class="dash-btn danger" onclick="removeUrl('${escapeHtml(m.id)}')" style="padding:4px 10px;font-size:12px;">削除</button>
           </td>
         </tr>
