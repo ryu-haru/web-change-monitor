@@ -42,9 +42,11 @@ module.exports = async (req, res) => {
       notify_slack: notify_slack || null, notify_email: notify_email || null,
       last_hash: null, last_content: null, last_checked_at: null, is_active: 1,
       created_at: Math.floor(Date.now() / 1000) };
-    await kv.set(`url:${id}`, record);
-    await kv.sadd(`urls:${apiKey.key}`, id);
-    await kv.sadd('urls:all', id);
+    await Promise.all([
+      kv.set(`url:${id}`, record),
+      kv.sadd(`urls:${apiKey.key}`, id),
+      kv.sadd('urls:all', id),
+    ]);
     return res.status(201).json(record);
   }
 

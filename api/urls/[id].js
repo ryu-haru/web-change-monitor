@@ -39,10 +39,12 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'DELETE') {
-    await kv.del(`url:${id}`);
-    await kv.del(`history:${id}`);
-    await kv.srem(`urls:${apiKey.key}`, id);
-    await kv.srem('urls:all', id);
+    await Promise.all([
+      kv.del(`url:${id}`),
+      kv.del(`history:${id}`),
+      kv.srem(`urls:${apiKey.key}`, id),
+      kv.srem('urls:all', id),
+    ]);
     return res.json({ success: true });
   }
 
