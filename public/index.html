@@ -191,6 +191,19 @@
     .footer-bottom { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     .footer-bottom p { font-size: 13px; color: var(--muted); }
 
+    /* ===== HISTORY MODAL ===== */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; align-items:center; justify-content:center; padding:16px; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--bg2); border:1px solid var(--border); border-radius:20px; padding:28px; max-width:640px; width:100%; max-height:80vh; overflow-y:auto; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+    .modal-header h3 { font-size:16px; font-weight:700; }
+    .modal-close { background:none; border:none; color:var(--muted); font-size:22px; cursor:pointer; padding:0 4px; line-height:1; }
+    .modal-close:hover { color:var(--text); }
+    .history-item { padding:14px; border:1px solid var(--border); border-radius:10px; margin-bottom:10px; background:var(--bg3); }
+    .history-item .ts { font-size:11px; color:var(--muted); margin-bottom:6px; }
+    .history-item .diff { font-size:13px; white-space:pre-wrap; line-height:1.7; color:var(--text); }
+    .history-empty { text-align:center; padding:40px; color:var(--muted); font-size:14px; }
+
     @media (max-width: 640px) {
       nav { padding: 12px 16px; }
       .hero { padding: 110px 16px 60px; }
@@ -435,6 +448,17 @@
   </div>
 </section>
 
+<!-- ===== HISTORY MODAL ===== -->
+<div class="modal-overlay" id="historyModal" onclick="if(event.target===this)closeHistory()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="historyModalTitle">変更履歴</h3>
+      <button class="modal-close" onclick="closeHistory()">✕</button>
+    </div>
+    <div id="historyModalContent"></div>
+  </div>
+</div>
+
 <!-- ===== FOOTER ===== -->
 <footer>
   <div class="footer-inner">
@@ -648,12 +672,46 @@
           <td>${intervalLabel}</td>
           <td style="color:var(--muted);font-size:12px;">${lastCheck}</td>
           <td>${statusBadge}</td>
-          <td>
+          <td style="white-space:nowrap;">
+            <button class="dash-btn secondary" onclick="showHistory('${escapeHtml(m.id)}')" style="padding:4px 10px;font-size:12px;margin-right:4px;">履歴</button>
             <button class="dash-btn danger" onclick="removeUrl('${escapeHtml(m.id)}')" style="padding:4px 10px;font-size:12px;">削除</button>
           </td>
         </tr>
       `;
     }).join('');
+  }
+
+  // ===== History Modal =====
+  async function showHistory(id) {
+    const modal = document.getElementById('historyModal');
+    const title = document.getElementById('historyModalTitle');
+    const content = document.getElementById('historyModalContent');
+    modal.classList.add('open');
+    title.textContent = '変更履歴 読み込み中...';
+    content.innerHTML = '<div class="history-empty">読み込み中...</div>';
+    try {
+      const res = await fetch(`${API_BASE}/api/urls/history?id=${encodeURIComponent(id)}&limit=20`, {
+        headers: { 'X-API-Key': apiKey }
+      });
+      const data = await res.json();
+      title.textContent = `変更履歴（${data.count || 0}件）`;
+      if (!data.history || !data.history.length) {
+        content.innerHTML = '<div class="history-empty">変更履歴はまだありません。<br>次回チェック時に変更があれば記録されます。</div>';
+        return;
+      }
+      content.innerHTML = data.history.map(h => `
+        <div class="history-item">
+          <div class="ts">${new Date((h.detected_at || 0) * 1000).toLocaleString('ja-JP')}</div>
+          <div class="diff">${escapeHtml(h.diff_summary || '変更を検出しました')}</div>
+        </div>
+      `).join('');
+    } catch {
+      content.innerHTML = '<div class="history-empty">履歴の読み込みに失敗しました</div>';
+    }
+  }
+
+  function closeHistory() {
+    document.getElementById('historyModal').classList.remove('open');
   }
 
   function escapeHtml(str) {
