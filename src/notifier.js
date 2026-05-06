@@ -22,14 +22,22 @@ async function notifySlack(webhookUrl, urlRecord, diff) {
   await axios.post(webhookUrl, message);
 }
 
-async function notifyEmail(to, urlRecord, diff) {
-  if (!process.env.SMTP_HOST) return;
+let _transporter = null;
+function getTransporter() {
+  if (!process.env.SMTP_HOST) return null;
+  if (!_transporter) {
+    _transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+  }
+  return _transporter;
+}
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-  });
+async function notifyEmail(to, urlRecord, diff) {
+  const transporter = getTransporter();
+  if (!transporter) return;
 
   await transporter.sendMail({
     from: process.env.MAIL_FROM,
