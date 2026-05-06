@@ -411,13 +411,19 @@
         </div>
 
         <div class="card" id="keyCard" style="display:none;">
-          <h2>APIキー設定</h2>
+          <h2 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <span>APIキー設定</span>
+            <span id="planBadge" style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(124,106,247,0.12);color:#7c6af7;"></span>
+          </h2>
           <div class="api-key-section">
             <input type="text" id="apiKeyInput" placeholder="wcm_xxxxxxxxxxxxxxxxxxxxxxxx" style="font-family:monospace;">
             <button class="dash-btn" onclick="saveApiKey()">保存して読込</button>
             <button class="dash-btn secondary" onclick="clearApiKey()">ログアウト</button>
           </div>
           <p style="font-size:12px;color:var(--muted);margin-top:8px;">APIキーはブラウザのローカルストレージに保存されます。</p>
+          <div id="freeUpgradePrompt" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:8px;font-size:13px;color:#c0392b;">
+            ⚠️ Free プランの上限に近づいています。<button class="dash-btn" onclick="upgradeToPro()" style="margin-left:8px;padding:4px 12px;font-size:12px;">Proにアップグレード</button>
+          </div>
         </div>
 
         <!-- Add URL -->
@@ -666,10 +672,22 @@
     if (!apiKey) return;
     try {
       const res = await fetch(`${API_BASE}/api/urls`, { headers: { 'X-API-Key': apiKey } });
+      if (res.status === 401) { clearApiKey(); return; }
       const data = await res.json();
-      renderTable(Array.isArray(data) ? data : []);
+      const urls = Array.isArray(data) ? data : [];
+      renderTable(urls);
       const el = document.getElementById('lastUpdatedAt');
       if (el) el.textContent = new Date().toLocaleTimeString('ja-JP');
+
+      // Show plan badge and upgrade prompt based on URL count
+      const planBadge = document.getElementById('planBadge');
+      const upgradePrompt = document.getElementById('freeUpgradePrompt');
+      if (planBadge) {
+        const urlCount = urls.length;
+        planBadge.textContent = `Free: ${urlCount}/3 URL`;
+        if (urlCount >= 2 && upgradePrompt) upgradePrompt.style.display = 'block';
+        else if (upgradePrompt) upgradePrompt.style.display = 'none';
+      }
     } catch { renderTable([]); }
   }
 

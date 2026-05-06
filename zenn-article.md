@@ -17,8 +17,8 @@ https://web-change-monitor-one.vercel.app
 - **URLを登録するだけ**で変更を自動検知
 - **Slack Webhook** で即時通知（Proプラン）
 - **CSSセレクタ**で「価格表示エリアだけ監視」が可能
-- **ログイン後のページ**も監視可能（Playwright + Cookie）
 - **変更前後の差分**をテキストで記録・表示
+- **「今すぐチェック」ボタン**で手動トリガーも可能
 
 ### ユースケース例
 
@@ -37,7 +37,7 @@ https://web-change-monitor-one.vercel.app
 Frontend: Vanilla HTML/CSS/JS（ランディングページ兼ダッシュボード）
 Backend:  Node.js + Express → Vercel Serverless Functions
 監視エンジン: Playwright + node-cron
-ストレージ: Upstash Redis（Vercel KV）
+ストレージ: Upstash Redis
 決済:       Stripe
 Chrome拡張: Manifest V3
 ```
