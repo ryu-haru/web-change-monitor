@@ -679,15 +679,24 @@
       const el = document.getElementById('lastUpdatedAt');
       if (el) el.textContent = new Date().toLocaleTimeString('ja-JP');
 
-      // Show plan badge and upgrade prompt based on URL count
-      const planBadge = document.getElementById('planBadge');
-      const upgradePrompt = document.getElementById('freeUpgradePrompt');
-      if (planBadge) {
-        const urlCount = urls.length;
-        planBadge.textContent = `Free: ${urlCount}/3 URL`;
-        if (urlCount >= 2 && upgradePrompt) upgradePrompt.style.display = 'block';
-        else if (upgradePrompt) upgradePrompt.style.display = 'none';
-      }
+      // Fetch plan info and show badge
+      fetch(`${API_BASE}/api/keys/info`, { headers: { 'X-API-Key': apiKey } })
+        .then(r => r.json())
+        .then(info => {
+          const planBadge = document.getElementById('planBadge');
+          const upgradePrompt = document.getElementById('freeUpgradePrompt');
+          if (!planBadge) return;
+          if (info.plan === 'pro') {
+            planBadge.textContent = 'Pro プラン';
+            planBadge.style.background = 'rgba(39,174,96,0.12)';
+            planBadge.style.color = '#27ae60';
+            if (upgradePrompt) upgradePrompt.style.display = 'none';
+          } else {
+            planBadge.textContent = `Free: ${info.url_count}/3 URL`;
+            if (info.url_count >= 2 && upgradePrompt) upgradePrompt.style.display = 'block';
+            else if (upgradePrompt) upgradePrompt.style.display = 'none';
+          }
+        }).catch(() => {});
     } catch { renderTable([]); }
   }
 

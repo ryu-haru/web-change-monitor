@@ -2,10 +2,19 @@ const { chromium } = require('playwright');
 const { diffWords } = require('diff');
 const crypto = require('crypto');
 
+let _browser = null;
+
+async function getBrowser() {
+  if (_browser && _browser.isConnected()) return _browser;
+  _browser = await chromium.launch({ args: ['--no-sandbox'] });
+  _browser.on('disconnected', () => { _browser = null; });
+  return _browser;
+}
+
 async function fetchPageContent(url, selector = null) {
-  const browser = await chromium.launch({ args: ['--no-sandbox'] });
+  const browser = await getBrowser();
+  const page = await browser.newPage();
   try {
-    const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
     let content;
@@ -17,7 +26,7 @@ async function fetchPageContent(url, selector = null) {
     }
     return content?.trim() || '';
   } finally {
-    await browser.close();
+    await page.close().catch(() => {});
   }
 }
 
