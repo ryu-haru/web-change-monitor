@@ -10,6 +10,11 @@ async function runCheck(urlRecord) {
   console.log(`[scheduler] Checking: ${urlRecord.name} (${urlRecord.url})`);
   const result = await checkUrl(urlRecord);
 
+  if (result.error) {
+    db.prepare('UPDATE monitored_urls SET last_checked_at = unixepoch() WHERE id = ?').run(urlRecord.id);
+    return;
+  }
+
   db.prepare(`
     UPDATE monitored_urls SET last_content = ?, last_hash = ?, last_checked_at = unixepoch()
     WHERE id = ?
