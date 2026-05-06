@@ -77,14 +77,17 @@ module.exports = async (req, res) => {
   let checked = 0, changed = 0;
   const nowSec = Math.floor(Date.now() / 1000);
 
-  for (const id of ids) {
-    const record = await kv.get(`url:${id}`);
-    if (!record || !record.is_active) continue;
+  // Fetch all URL records in parallel instead of sequentially
+  const records = await Promise.all(ids.map(id => kv.get(`url:${id}`)));
+  const due = records
+    .map((record, i) => ({ record, id: ids[i] }))
+    .filter(({ record }) => {
+      if (!record || !record.is_active) return false;
+      const intervalSec = (record.interval_minutes || 60) * 60;
+      return nowSec - (record.last_checked_at || 0) >= intervalSec;
+    });
 
-    const intervalSec = (record.interval_minutes || 60) * 60;
-    const lastChecked = record.last_checked_at || 0;
-    if (nowSec - lastChecked < intervalSec) continue;
-
+  for (const { id, record } of due) {
     try {
       const content = await fetchContent(record.url, record.selector);
       const hash = crypto.createHash('sha256').update(content).digest('hex');
@@ -98,12 +101,15 @@ module.exports = async (req, res) => {
         if (removed) parts.push(`削除: "${removed.slice(0, 150)}${removed.length > 150 ? '...' : ''}"`);
         if (added) parts.push(`追加: "${added.slice(0, 150)}${added.length > 150 ? '...' : ''}"`);
         const diff = parts.join('\n') || '変更を検出しました';
-        await kv.lpush(`history:${id}`, JSON.stringify({ id: uuidv4(), detected_at: Math.floor(Date.now()/1000), diff_summary: diff }));
-        await kv.ltrim(`history:${id}`, 0, 49);
 
-        if (record.notify_slack) await notifySlack(record.notify_slack, record.name, record.url, diff).catch(() => {});
-        if (process.env.SLACK_DEFAULT_WEBHOOK) await notifySlack(process.env.SLACK_DEFAULT_WEBHOOK, record.name, record.url, diff).catch(() => {});
-        if (record.notify_email) await notifyEmail(record.notify_email, record.name, record.url, diff).catch(() => {});
+        // Parallelize history write and notifications
+        await Promise.all([
+          kv.lpush(`history:${id}`, JSON.stringify({ id: uuidv4(), detected_at: Math.floor(Date.now()/1000), diff_summary: diff }))
+            .then(() => kv.ltrim(`history:${id}`, 0, 49)),
+          record.notify_slack ? notifySlack(record.notify_slack, record.name, record.url, diff).catch(() => {}) : null,
+          process.env.SLACK_DEFAULT_WEBHOOK ? notifySlack(process.env.SLACK_DEFAULT_WEBHOOK, record.name, record.url, diff).catch(() => {}) : null,
+          record.notify_email ? notifyEmail(record.notify_email, record.name, record.url, diff).catch(() => {}) : null,
+        ]);
       }
 
       await kv.set(`url:${id}`, { ...record, last_content: content.slice(0, 5000), last_hash: hash, last_checked_at: Math.floor(Date.now()/1000), error_count: 0, last_error: null });
