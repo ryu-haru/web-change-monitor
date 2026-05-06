@@ -42,4 +42,10 @@ db.exec(`
   );
 `);
 
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_monitored_urls_api_key ON monitored_urls(api_key);
+  CREATE INDEX IF NOT EXISTS idx_monitored_urls_is_active ON monitored_urls(is_active);
+  CREATE INDEX IF NOT EXISTS idx_change_history_url_id ON change_history(url_id);
+`);
+
 module.exports = db;
