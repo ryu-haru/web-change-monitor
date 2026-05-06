@@ -25,6 +25,18 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     const { name, url, interval_minutes = 60, selector, notify_slack, notify_email } = req.body || {};
     if (!name || !url) return res.status(400).json({ error: 'name と url は必須です' });
+
+    // Plan limits enforcement
+    if (apiKey.plan === 'free') {
+      const existingIds = await kv.smembers(`urls:${apiKey.key}`) || [];
+      if (existingIds.length >= 3) {
+        return res.status(403).json({ error: 'フリープランは3URLまでです。Proにアップグレードしてください。', upgrade: true });
+      }
+      if (parseInt(interval_minutes) < 60) {
+        return res.status(403).json({ error: 'フリープランのチェック間隔は最短60分です。', upgrade: true });
+      }
+    }
+
     const id = uuidv4();
     const record = { id, api_key: apiKey.key, name, url, interval_minutes, selector: selector || null,
       notify_slack: notify_slack || null, notify_email: notify_email || null,

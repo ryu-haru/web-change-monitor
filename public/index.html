@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Web Change Monitor - 競合サイトの変更を即検知</title>
+  <title>WebMonitor - 競合サイトの変更を自動検知 | Slack通知対応のSaaS</title>
+  <meta name="description" content="URLを登録するだけで競合サイトの価格変更・コンテンツ更新を自動検知。Slack・メール即時通知。ログイン後ページも監視可能。Proプラン月額¥980。">
+  <meta name="keywords" content="ウェブ変更検知,サイト監視,競合調査,価格監視,Slack通知,Playwright,web change monitor">
+  <meta property="og:title" content="WebMonitor - 競合サイトの変更を自動検知">
+  <meta property="og:description" content="URLを登録するだけで競合の価格変更・更新を即検知。Slack通知対応。無料プランあり。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://web-change-monitor-one.vercel.app/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="WebMonitor - 競合サイトの変更を自動検知">
+  <meta name="twitter:description" content="URLを登録するだけで競合の価格変更・更新を即検知。Slack通知対応。無料プランあり。">
+  <link rel="canonical" href="https://web-change-monitor-one.vercel.app/">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -167,6 +177,8 @@
     .status-ok { background: rgba(46,204,113,0.12); color: var(--success); }
     .status-changed { background: rgba(231,76,60,0.15); color: #ff6b6b; }
     .status-pending { background: rgba(255,165,0,0.12); color: #ffaa00; }
+    .status-warn { background: rgba(255,165,0,0.15); color: #ffaa00; }
+    .status-error { background: rgba(231,76,60,0.15); color: var(--danger); cursor: help; }
     .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .url-cell { font-family: monospace; font-size: 12px; color: #aaa; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
@@ -295,6 +307,33 @@
   </div>
 </section>
 
+<!-- ===== USE CASES ===== -->
+<section id="usecases">
+  <div class="container">
+    <div class="section-title">
+      <h2>こんな場面で使われています</h2>
+      <p>「手動でチェックするのは無理」という課題を解決</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>競合の価格変更を即キャッチ</h3>
+        <p>競合他社の料金ページをCSS セレクタで監視。値下げや値上げを検知した瞬間に Slack へ通知。営業戦略の即座な調整が可能に。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏢</div>
+        <h3>採用ページの求人増減を追う</h3>
+        <p>気になる企業の採用ページを登録。新しいポジションが追加された瞬間に通知。転職活動・競合の採用状況把握に。</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📰</div>
+        <h3>ニュース・IR情報の更新検知</h3>
+        <p>投資先・取引先企業のプレスリリースページを監視。発表直後に情報をキャッチし、迅速な意思決定をサポート。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ===== PRICING ===== -->
 <section id="pricing" class="pricing-section">
   <div class="container">
@@ -319,7 +358,7 @@
       </div>
       <!-- Pro -->
       <div class="pricing-card popular">
-        <div class="popular-badge">人気 No.1</div>
+        <div class="popular-badge">おすすめ</div>
         <div class="plan-name">Pro</div>
         <div class="plan-price">¥980<span>/月</span></div>
         <div class="plan-period">年払いで ¥9,800（2ヶ月分無料）</div>
@@ -488,14 +527,14 @@
       <div class="footer-col">
         <h4>法的情報</h4>
         <ul>
-          <li><a href="#">利用規約</a></li>
-          <li><a href="#">プライバシーポリシー</a></li>
-          <li><a href="#">特定商取引法</a></li>
+          <li><a href="/terms.html">利用規約</a></li>
+          <li><a href="/privacy.html">プライバシーポリシー</a></li>
+          <li><a href="/tokutei.html">特定商取引法に基づく表記</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2025 WebMonitor. All rights reserved.</p>
+      <p>&copy; 2026 WebMonitor / SYS株式会社. All rights reserved.</p>
       <p>Made with Playwright &amp; Node.js</p>
     </div>
   </div>
@@ -606,8 +645,11 @@
         document.getElementById('intervalInput').value = '60';
         loadUrls();
         showToast('監視URLを追加しました');
+      } else if (data.upgrade) {
+        showToast('フリープランは3URLまでです', '#e74c3c');
+        setTimeout(() => { document.getElementById('pricing').scrollIntoView({behavior:'smooth'}); }, 500);
       } else {
-        showToast(data.error || 'エラーが発生しました');
+        showToast(data.error || 'エラーが発生しました', '#e74c3c');
       }
     } catch { showToast('サーバーに接続できません'); }
   }
@@ -671,11 +713,16 @@
       return;
     }
     tbody.innerHTML = items.map(m => {
+      const errCount = m.error_count || 0;
       const statusBadge = m.is_active === false
         ? '<span class="status-badge status-pending"><span class="status-dot"></span>停止中</span>'
-        : m.last_hash
-          ? '<span class="status-badge status-ok"><span class="status-dot"></span>監視中</span>'
-          : '<span class="status-badge status-pending"><span class="status-dot"></span>初回待ち</span>';
+        : errCount >= 3
+          ? `<span class="status-badge status-error" title="${escapeHtml(m.last_error||'')}"><span class="status-dot"></span>エラー(${errCount}回)</span>`
+          : errCount > 0
+            ? `<span class="status-badge status-warn" title="${escapeHtml(m.last_error||'')}"><span class="status-dot"></span>警告</span>`
+            : m.last_hash
+              ? '<span class="status-badge status-ok"><span class="status-dot"></span>監視中</span>'
+              : '<span class="status-badge status-pending"><span class="status-dot"></span>初回待ち</span>';
       const lastCheck = m.last_checked_at
         ? new Date(m.last_checked_at * 1000).toLocaleString('ja-JP')
         : '未チェック';

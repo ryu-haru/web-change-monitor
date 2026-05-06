@@ -106,12 +106,12 @@ module.exports = async (req, res) => {
         if (record.notify_email) await notifyEmail(record.notify_email, record.name, record.url, diff).catch(() => {});
       }
 
-      await kv.set(`url:${id}`, { ...record, last_content: content.slice(0, 5000), last_hash: hash, last_checked_at: Math.floor(Date.now()/1000) });
+      await kv.set(`url:${id}`, { ...record, last_content: content.slice(0, 5000), last_hash: hash, last_checked_at: Math.floor(Date.now()/1000), error_count: 0, last_error: null });
       checked++;
     } catch (err) {
       console.error(`Error checking ${record.url}:`, err.message);
-      // Update last_checked_at even on failure to respect interval and avoid hammering
-      await kv.set(`url:${id}`, { ...record, last_checked_at: Math.floor(Date.now()/1000) }).catch(() => {});
+      const errorCount = (record.error_count || 0) + 1;
+      await kv.set(`url:${id}`, { ...record, last_checked_at: Math.floor(Date.now()/1000), error_count: errorCount, last_error: err.message }).catch(() => {});
     }
   }
 
