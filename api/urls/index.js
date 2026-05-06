@@ -1,5 +1,30 @@
 const kv = require('../store');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+
+async function fetchContentQuick(url, selector) {
+  try {
+    const chromium = require('@sparticuz/chromium');
+    const { chromium: playwright } = require('playwright-core');
+    const browser = await playwright.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+    try {
+      const page = await browser.newPage();
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 20000 });
+      const text = selector
+        ? await page.locator(selector).first().textContent({ timeout: 5000 }).catch(() => '')
+        : await page.evaluate(() => document.body.innerText);
+      return text?.trim() || '';
+    } finally {
+      await browser.close();
+    }
+  } catch {
+    return null;
+  }
+}
 
 async function getApiKey(req) {
   const key = req.headers['x-api-key'];
@@ -45,6 +70,15 @@ module.exports = async (req, res) => {
     await kv.set(`url:${id}`, record);
     await kv.sadd(`urls:${apiKey.key}`, id);
     await kv.sadd('urls:all', id);
+
+    // Attempt immediate first check (best-effort, non-blocking failure)
+    fetchContentQuick(url, selector || null).then(async content => {
+      if (content !== null) {
+        const hash = crypto.createHash('sha256').update(content).digest('hex');
+        await kv.set(`url:${id}`, { ...record, last_content: content.slice(0, 5000), last_hash: hash, last_checked_at: Math.floor(Date.now()/1000) });
+      }
+    }).catch(() => {});
+
     return res.status(201).json(record);
   }
 
