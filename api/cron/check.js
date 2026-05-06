@@ -110,6 +110,8 @@ module.exports = async (req, res) => {
       checked++;
     } catch (err) {
       console.error(`Error checking ${record.url}:`, err.message);
+      // Update last_checked_at even on failure to respect interval and avoid hammering
+      await kv.set(`url:${id}`, { ...record, last_checked_at: Math.floor(Date.now()/1000) }).catch(() => {});
     }
   }
 
