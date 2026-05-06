@@ -67,10 +67,15 @@ module.exports = async (req, res) => {
 
   const ids = await kv.smembers('urls:all') || [];
   let checked = 0, changed = 0;
+  const nowSec = Math.floor(Date.now() / 1000);
 
   for (const id of ids) {
     const record = await kv.get(`url:${id}`);
     if (!record || !record.is_active) continue;
+
+    const intervalSec = (record.interval_minutes || 60) * 60;
+    const lastChecked = record.last_checked_at || 0;
+    if (nowSec - lastChecked < intervalSec) continue;
 
     try {
       const content = await fetchContent(record.url, record.selector);

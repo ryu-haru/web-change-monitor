@@ -87,4 +87,12 @@ async function del(key) {
   store.delete(key);
 }
 
-module.exports = { get, set, sadd, smembers, lpush, ltrim, lrange, del };
+async function srem(key, ...members) {
+  if (useRedis()) {
+    return redisCmd('SREM', key, ...members);
+  }
+  const s = store.get(key);
+  if (s instanceof Set) members.forEach(m => s.delete(m));
+}
+
+module.exports = { get, set, sadd, smembers, srem, lpush, ltrim, lrange, del };

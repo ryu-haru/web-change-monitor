@@ -29,9 +29,8 @@ module.exports = async (req, res) => {
   if (req.method === 'DELETE') {
     await kv.del(`url:${id}`);
     await kv.del(`history:${id}`);
-    // Setからも削除（Upstash RESTでは直接削除）
-    // smembersから削除するには再構築が必要なため、is_active=0で無効化
-    await kv.set(`url:${id}`, { ...record, is_active: 0, deleted_at: Math.floor(Date.now()/1000) });
+    await kv.srem(`urls:${apiKey.key}`, id);
+    await kv.srem('urls:all', id);
     return res.json({ success: true });
   }
 
