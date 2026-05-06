@@ -3,6 +3,7 @@ const chromium = require('@sparticuz/chromium');
 const { chromium: playwright } = require('playwright-core');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const { diffWords } = require('diff');
 
 async function fetchContent(url, selector) {
   const browser = await playwright.launch({
@@ -26,7 +27,13 @@ async function notifySlack(webhook, name, url, diff) {
   await fetch(webhook, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: `🔔 *${name}* に変更が検出されました\n<${url}|確認する>\n\`\`\`${diff.slice(0, 300)}\`\`\`` })
+    body: JSON.stringify({
+      text: `🔔 *${name}* に変更が検出されました`,
+      blocks: [
+        { type: 'section', text: { type: 'mrkdwn', text: `🔔 *${name}* に変更が検出されました\n<${url}|ページを確認する>` } },
+        { type: 'section', text: { type: 'mrkdwn', text: `*変更内容:*\n\`\`\`${diff.slice(0, 300)}\`\`\`` } },
+      ]
+    })
   });
 }
 
@@ -83,7 +90,13 @@ module.exports = async (req, res) => {
 
       if (record.last_hash && hash !== record.last_hash) {
         changed++;
-        const diff = `前回から変更あり (${new Date().toLocaleString('ja-JP')})`;
+        const changes = diffWords(record.last_content || '', content);
+        const added = changes.filter(c => c.added).map(c => c.value).join(' ');
+        const removed = changes.filter(c => c.removed).map(c => c.value).join(' ');
+        const parts = [];
+        if (removed) parts.push(`削除: "${removed.slice(0, 150)}${removed.length > 150 ? '...' : ''}"`);
+        if (added) parts.push(`追加: "${added.slice(0, 150)}${added.length > 150 ? '...' : ''}"`);
+        const diff = parts.join('\n') || '変更を検出しました';
         await kv.lpush(`history:${id}`, JSON.stringify({ id: uuidv4(), detected_at: Math.floor(Date.now()/1000), diff_summary: diff }));
         await kv.ltrim(`history:${id}`, 0, 49);
 
