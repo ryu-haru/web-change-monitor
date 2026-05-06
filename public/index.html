@@ -657,7 +657,16 @@
         ['urlInput','labelInput','selectorInput','slackInput','notifyEmailInput'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('intervalInput').value = '60';
         loadUrls();
-        showToast('監視URLを追加しました');
+        showToast('監視URLを追加しました。初回チェック中...');
+        // Trigger immediate first check (separate request, non-blocking for UI)
+        fetch(`${API_BASE}/api/urls/check-now`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+          body: JSON.stringify({ id: data.id }),
+        }).then(() => {
+          loadUrls();
+          showToast('初回チェック完了');
+        }).catch(() => {});
       } else if (data.upgrade) {
         showToast('フリープランは3URLまでです', '#e74c3c');
         setTimeout(() => { document.getElementById('pricing').scrollIntoView({behavior:'smooth'}); }, 500);
