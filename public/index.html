@@ -461,9 +461,12 @@
 
         <!-- Monitoring List -->
         <div class="card">
-          <h2 style="display:flex;align-items:center;justify-content:space-between;">
+          <h2 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
             <span>監視一覧</span>
-            <span style="font-size:11px;color:var(--muted);font-weight:400;">最終更新: <span id="lastUpdatedAt">—</span></span>
+            <span style="display:flex;align-items:center;gap:12px;">
+              <span style="font-size:11px;color:var(--muted);font-weight:400;">最終更新: <span id="lastUpdatedAt">—</span></span>
+              <button class="dash-btn secondary" id="checkNowBtn" onclick="checkNow()" style="padding:4px 14px;font-size:12px;">今すぐチェック</button>
+            </span>
           </h2>
           <div class="table-wrap">
             <table id="monitorTable">
@@ -691,6 +694,34 @@
       loadUrls();
       showToast('削除しました');
     } catch { showToast('削除に失敗しました'); }
+  }
+
+  // ===== Check Now =====
+  async function checkNow() {
+    if (!apiKey) { alert('先にAPIキーを設定してください。'); return; }
+    const btn = document.getElementById('checkNowBtn');
+    btn.disabled = true;
+    btn.textContent = 'チェック中...';
+    showToast('チェックを開始しました（最大60秒）');
+    try {
+      const res = await fetch(`${API_BASE}/api/urls/check-now`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (data.error) {
+        showToast(data.error, '#e53e3e');
+      } else {
+        showToast(`チェック完了: ${data.checked}件確認、${data.changed}件変更`);
+        loadUrls();
+      }
+    } catch {
+      showToast('チェックに失敗しました。しばらく後に再試行してください。', '#e53e3e');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '今すぐチェック';
+    }
   }
 
   // ===== Upgrade to Pro =====
