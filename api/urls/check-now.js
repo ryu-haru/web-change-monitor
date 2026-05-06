@@ -52,10 +52,12 @@ module.exports = async (req, res) => {
   let checked = 0, changed = 0;
 
   try {
-    for (const urlId of ids) {
-      const record = await kv.get(`url:${urlId}`);
-      if (!record || record.api_key !== apiKey.key || !record.is_active) continue;
+    const records = await Promise.all(ids.map(id => kv.get(`url:${id}`)));
+    const activeRecords = records
+      .map((record, i) => ({ record, id: ids[i] }))
+      .filter(({ record }) => record && record.api_key === apiKey.key && record.is_active);
 
+    for (const { id: urlId, record } of activeRecords) {
       try {
         const page = await browser.newPage();
         await page.goto(record.url, { waitUntil: 'domcontentloaded', timeout: 15000 });
@@ -80,8 +82,7 @@ module.exports = async (req, res) => {
             id: require('uuid').v4(),
             detected_at: nowSec,
             diff_summary: diff
-          }));
-          await kv.ltrim(`history:${urlId}`, 0, 49);
+          })).then(() => kv.ltrim(`history:${urlId}`, 0, 49));
         }
 
         await kv.set(`url:${urlId}`, {
