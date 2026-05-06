@@ -1,0 +1,12 @@
+{
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "installCommand": "npm install",
+  "framework": null,
+  "functions": {
+    "api/**/*.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cron/check", "schedule": "0 0 * * *" }
+  ]
+}
