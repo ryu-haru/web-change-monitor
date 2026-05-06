@@ -58,9 +58,9 @@ module.exports = async (req, res) => {
 
       try {
         const page = await browser.newPage();
-        await page.goto(record.url, { waitUntil: 'networkidle', timeout: 20000 });
+        await page.goto(record.url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         const text = record.selector
-          ? await page.locator(record.selector).first().textContent({ timeout: 5000 }).catch(() => '')
+          ? await page.locator(record.selector).first().textContent({ timeout: 4000 }).catch(() => '')
           : await page.evaluate(() => document.body.innerText);
         await page.close();
 
