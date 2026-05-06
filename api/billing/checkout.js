@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
           recurring: { interval: 'month' },
           product_data: {
             name: 'Web Change Monitor Pro',
-            description: '監視URL無制限 + メール通知 + 15分ごとチェック',
+            description: '監視URL無制限 + メール通知 + 最短30分ごとチェック',
           },
           unit_amount: 980,
         },

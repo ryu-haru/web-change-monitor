@@ -254,7 +254,7 @@
         <div class="label">無料プランで監視</div>
       </div>
       <div class="hero-stat">
-        <div class="num">5分</div>
+        <div class="num">30分</div>
         <div class="label">最小チェック間隔</div>
       </div>
       <div class="hero-stat">
@@ -295,8 +295,8 @@
       </div>
       <div class="feature-card">
         <div class="feature-icon">⚡</div>
-        <h3>5分間隔のリアルタイム検知</h3>
-        <p>Pro プランでは最短 5 分ごとにチェック。競合が価格を変更した瞬間に検知し、素早い意思決定をサポートします。</p>
+        <h3>最短30分のリアルタイム検知</h3>
+        <p>Pro プランでは最短 30 分ごとにチェック。競合が価格を変更した瞬間に検知し、素早い意思決定をサポートします。</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">📊</div>
@@ -364,12 +364,10 @@
         <div class="plan-period">年払いで ¥9,800（2ヶ月分無料）</div>
         <ul class="plan-features">
           <li>監視URL 無制限</li>
-          <li>チェック間隔 最短5分</li>
+          <li>チェック間隔 最短30分</li>
           <li>Slack + メール通知</li>
           <li>変更履歴 無制限保持</li>
           <li>CSS セレクタ指定</li>
-          <li>ログイン後ページ監視</li>
-          <li>週次サマリーレポート</li>
           <li>API アクセス</li>
         </ul>
         <button class="plan-btn plan-btn-primary" onclick="upgradeToPro()">Pro を始める</button>
@@ -463,7 +461,10 @@
 
         <!-- Monitoring List -->
         <div class="card">
-          <h2>監視一覧</h2>
+          <h2 style="display:flex;align-items:center;justify-content:space-between;">
+            <span>監視一覧</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:400;">最終更新: <span id="lastUpdatedAt">—</span></span>
+          </h2>
           <div class="table-wrap">
             <table id="monitorTable">
               <thead>
@@ -543,6 +544,7 @@
 <script>
   const API_BASE = '';
   let apiKey = localStorage.getItem('wm_api_key') || '';
+  let _refreshTimer = null;
 
   // ===== Init =====
   (function init() {
@@ -561,6 +563,7 @@
     document.getElementById('keyCard').style.display = 'block';
     document.getElementById('addUrlCard').style.display = 'block';
     document.getElementById('monitorTableBody').closest('.card').style.display = 'block';
+    if (!_refreshTimer) _refreshTimer = setInterval(loadUrls, 60 * 1000);
   }
 
   // ===== Register / Login =====
@@ -611,6 +614,7 @@
   function clearApiKey() {
     apiKey = '';
     localStorage.removeItem('wm_api_key');
+    clearInterval(_refreshTimer); _refreshTimer = null;
     document.getElementById('apiKeyInput').value = '';
     document.getElementById('registerCard').style.display = 'block';
     document.getElementById('keyCard').style.display = 'none';
@@ -661,6 +665,8 @@
       const res = await fetch(`${API_BASE}/api/urls`, { headers: { 'X-API-Key': apiKey } });
       const data = await res.json();
       renderTable(Array.isArray(data) ? data : []);
+      const el = document.getElementById('lastUpdatedAt');
+      if (el) el.textContent = new Date().toLocaleTimeString('ja-JP');
     } catch { renderTable([]); }
   }
 
